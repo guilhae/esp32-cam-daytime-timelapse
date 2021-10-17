@@ -30,7 +30,7 @@
 #define ID_BYTE               0xAA
 #define EEPROM_SIZE           0x0F
 
-#define TIME_TO_SLEEP  600          //time ESP32 will go to sleep (in seconds)
+#define TIME_TO_SLEEP  60           //time ESP32 will go to sleep (in seconds)
 #define uS_TO_S_FACTOR 1000000ULL   //conversion factor for micro seconds to seconds */
 
 int min_light=20;
@@ -48,6 +48,17 @@ void sleep()
   
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
   esp_deep_sleep_start();
+}
+
+void reload()
+{
+  pinMode(4, OUTPUT);              //GPIO for LED flash
+  digitalWrite(4, LOW);            //turn OFF flash LED
+  rtc_gpio_hold_en(GPIO_NUM_4);    //make sure flash is held LOW in sleep
+
+  Serial.println("Reseting in 10 seconds..."); 
+  delay(10000);
+  ESP.restart();
 }
 
 void setup() 
@@ -132,9 +143,7 @@ void setup()
   if (err != ESP_OK) 
   {
     Serial.printf("Camera init failed with error 0x%x", err);
-    Serial.println("Reseting in 10 seconds..."); 
-    delay(10000);
-    ESP.restart();
+    reload();
   }
   
   
@@ -168,27 +177,21 @@ void setup()
   
   if (!fb){
     Serial.println("Camera capture failed");
-    Serial.println("Reseting in 10 seconds..."); 
-    delay(10000);
-    ESP.restart();
+    reload();
   }
 
   //initialize & mount SD card
   if(!SD_MMC.begin())
   {
     Serial.println("Card Mount Failed");
-    Serial.println("Reseting in 10 seconds..."); 
-    delay(10000);
-    ESP.restart();
+    reload();
   }
   
   uint8_t cardType = SD_MMC.cardType();
 
   if(cardType == CARD_NONE){
     Serial.println("No SD card attached");
-    Serial.println("Reseting in 10 seconds..."); 
-    delay(10000);
-    ESP.restart();
+    reload();
   }
   
   //generate file path
@@ -200,9 +203,7 @@ void setup()
   File file = fs.open(path.c_str(), FILE_WRITE);
   if(!file){
     Serial.println("Failed to create file");
-    Serial.println("Reseting in 10 seconds..."); 
-    delay(10000);
-    ESP.restart();
+    reload();
   }else{
     //save to SD card
     file.write(fb->buf, fb->len); 
